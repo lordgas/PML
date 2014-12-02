@@ -1,0 +1,23 @@
+---
+title: "PML"
+output: html_document
+---
+
+Read the training dataset
+```{r}
+ibrary(RCurl)
+x <- getURL("https://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv")
+trainingSet <- read.csv(text = x)
+
+x <- getURL("https://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv")
+testingSet <- read.csv(text = x)
+
+```
+
+You can also embed plots, for example:
+
+```{r, echo=FALSE}
+plot(cars)
+```
+
+Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
