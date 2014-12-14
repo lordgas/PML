@@ -1,9 +1,9 @@
 ---
-title: "PML"
+title: "Practical Machine Learning programming assignment"
 output: html_document
 ---
 
-Read the training dataset
+We read the test and training datasets from the provided links.
 ```{r}
 library(RCurl)
 x <- getURL("https://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv")
@@ -12,14 +12,28 @@ trainingSet <- read.csv(text = x)
 x <- getURL("https://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv")
 testingSet <- read.csv(text = x)
 library(caret)
-set.seed(32343)
-modelFit<-train(classe~.,data=trainingSet, method="glm")
+
 ```
+The datasets consists in 160 validables (20 observations in the test set and 19622 observations in the training set). The number of observations in the test is very small and does not follow the general 80-20 rule.
+
+A summary of the training dataset reveals that multiple rows contain NA values, therefore the datasets will require preprocessing.
+Near zero variance variables are also removed from the dataset.
+
+```{r}
+nzv <- nearZeroVar(trainingSet, saveMetrics = TRUE)
+nzv[nzv$nzv, ][1:10, ]
+trainingSetPRE<-trainingSet[,!nzv[,4]]
+#preProcess(trainingSetPRE[,-c(1:6)], method="knnImpute")
+set.seed(32343)
+modelFit<-train(classe~.,data=trainingSetPRE, method="rpart")
+```
+
 
 You can also embed plots, for example:
 
 ```{r, echo=FALSE}
-
+library(rattle)
+fancyRpartPlot(modelFit$finalModel)
 ```
 
 Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
