@@ -1,39 +1,90 @@
 ---
 title: "Practical Machine Learning programming assignment"
+  
 output: html_document
 ---
-
 We read the test and training datasets from the provided links.
-```{r}
+```{r loadFiles, cache=TRUE, echo=FALSE}
 library(RCurl)
 x <- getURL("https://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv")
 trainingSet <- read.csv(text = x)
 
 x <- getURL("https://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv")
 testingSet <- read.csv(text = x)
-library(caret)
+
 
 ```
-The datasets consists in 160 validables (20 observations in the test set and 19622 observations in the training set). The number of observations in the test is very small and does not follow the general 80-20 rule.
+The datasets consists in 160 validables (20 observations in the test set and 19622 observations in the training set). 
 
-A summary of the training dataset reveals that multiple rows contain NA values, therefore the datasets will require preprocessing.
+# Preprocessing
+
+A summary of the training dataset reveals that multiple rows contain a majority of NA values, which are removed from the dataset.
 Near zero variance variables are also removed from the dataset.
 
-```{r}
+```{r preprocessing}
+library(caret)
 nzv <- nearZeroVar(trainingSet, saveMetrics = TRUE)
-nzv[nzv$nzv, ][1:10, ]
-trainingSetPRE<-trainingSet[,!nzv[,4]]
-#preProcess(trainingSetPRE[,-c(1:6)], method="knnImpute")
+tidyTrainingSet<-trainingSet[,!nzv[,4]]
+tidyTrainingSet<-tidyTrainingSet[,colSums(is.na(tidyTrainingSet))==0]
+tidyTrainingSet<-tidyTrainingSet[,7:59]
+```
+
+# Principal components analysis 
+
+The first 7 principal components explain the ??r round(summary(prComp)$importance[3,7],2)*100?? %  of the variance. Therefore we predict with the preProcess function the 7 most important principal components for the training set.
+
+```{r principalComponents}
+prComp<-prcomp(tidyTrainingSet[,-53])
+screeplot(prComp, type = "l")
+preProc<-preProcess(tidyTrainingSet[,-53],method="pca",pcaComp = 7)
+trainPC<-predict(preProc, tidyTrainingSet[,-53])
+```
+
+# Predicting with trees
+
+```{r trees}
+
 set.seed(32343)
-modelFit<-train(classe~.,data=trainingSetPRE, method="rpart")
-```
+modelFitTree<-train(tidyTrainingSet$classe~.,data=trainPC, method="rpart")
 
-
-You can also embed plots, for example:
-
-```{r, echo=FALSE}
 library(rattle)
-fancyRpartPlot(modelFit$finalModel)
+fancyRpartPlot(modelFitTree$finalModel)
+print(modelFitTree$finalModel)
 ```
 
-Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
+
+
+
+# Random forest
+
+In random forests, there is no need for cross-validation or a separate test set to get an unbiased estimate of the test set error. It is estimated internally , during the run.
+
+```{r randomForest, echo=FALSE}
+modelFitRF<-train(tidyTrainingSet$classe~.,data=trainPC, method="rf")
+print(modelFitRF$finalModel)
+```
+# Predicting on the test set
+
+We run the selected model (random forest, which has the highest accuracy) on the test set, by first applying the same preprocessing to it as for the training set.
+
+```{r generatingPredictionResults}
+
+pml_write_files = function(x){
+  n = length(x)
+  for(i in 1:n){
+    filename = paste0("problem_id_",i,".txt")
+    write.table(x[i],file=filename,quote=FALSE,row.names=FALSE,col.names=FALSE)
+  }
+}
+
+nzv <- nearZeroVar(testingSet, saveMetrics = TRUE)
+testingSet<-testingSet[,!nzv[,4]]
+tidyTestingSet<-testingSet[,colSums(is.na(tidyTrainingSet))==0]
+tidyTestingSet<-tidyTestingSet[,7:59]
+testPC<-predict(preProc, tidyTestingSet[,-53])
+testPrediction<-predict(modelFitRF,newdata = testPC)
+setwd(dir = "~/Documents/PML/")
+pml_write_files(testPrediction)
+
+```
+
