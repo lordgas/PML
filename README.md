@@ -1,4 +1,0 @@
-PML
-===
-
-practical machine learning
